@@ -1,14 +1,14 @@
-## Hungarian-method
+# Hungarian-method
 
-# Podatki
+## Podatki
 - Poln dvodelen graf *G*, kjer je $V(G) = X \cup Y$ dvodelna razdelitev, $X = \{x_1,\ldots,x_n\}$ in $Y = \{y_1,\ldots,y_m\}$.
 - Matrika cen povezav $C \in \mathbb{R}^{n\times m}$.
 
-# Rezultat
+## Rezultat
 Najcenejše popolno prirejanje v $G$, pri čemer je cena prirejanja $M \subseteq E(G)$ enaka
 $$ c(M) = \sum_{x_iy_j \in M}c_{ij}. $$
 
-# Postopek
+## Postopek
 1. Zarotiramo matriko cen povezav tako, da bo stolpcev vsaj toliko kot vrstic in 
    definiramo $k = \min{(n,m)}$. Pojdi na točko 2.
 2. Od elementov vsake vrstice matrike $C$ odštejemo najmanjši element vrstice. Pojdi
