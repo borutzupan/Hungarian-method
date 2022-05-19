@@ -1,125 +1,330 @@
 import tkinter as tk
 from tkinter import DISABLED, messagebox
+from traceback import FrameSummary
 import numpy as np
-import sqlite3
-import main
+from main import *
 
 
 root = tk.Tk()
 root.title("HUNGARIAN METHOD")
-root.geometry("250x250")
+
+global lst_custom
+global lst_random
+global weights_custom_min
+global weights_custom_max
+global weights_random_min
+global weights_random_max
+
+lst_custom = []
+lst_random = []
+weights_custom_min = []
+weights_custom_max = []
+weights_random_min = []
+weights_random_max = []
 
 
 # FUNCTIONS FOR WIDGETS
+def save(matrix, sort):
+    # function that will save a matrix into a list
+    global lst_custom
+    global lst_random
+    if sort == "custom":
+        lst_custom.append(matrix)
+    elif sort == "random":
+        lst_random.append(matrix)
+
+
+def clear(sort):
+    # function that will clear the list with matrices
+    global lst_custom
+    global lst_random
+    global weights_custom_min
+    global weights_custom_max
+    global weights_random_min
+    global weights_random_max
+    if sort == "custom":
+        lst_custom = []
+    elif sort == "random":
+        lst_random = []
+    elif sort == "weights_custom_min":
+        weights_custom_min = []
+    elif sort == "weights_custom_max":
+        weights_custom_max = []
+    elif sort == "weights_random_min":
+        weights_random_min = []
+    elif sort == "weights_random_max":
+        weights_random_max = []
+
+
 def show_matrix(matrix, window):
+    # function that will show matrix on a window
     (n_rows, n_cols) = matrix.shape
-    for r in range(n_rows):
-        for c in range(n_cols):
-            mystr = tk.StringVar()
-            mystr.set('{}'.format(matrix[r, c]))
-            entry = tk.Entry(window, width=5, textvariable=mystr, state=DISABLED)
-            entry.grid(row=r+3, column=c)
-    window.after(1, lambda: window.focus_force())
+    if (n_rows <= 10) and (n_cols <= 10):
+        for r in range(n_rows):
+            for c in range(n_cols):
+                mystr = tk.StringVar()
+                mystr.set('{}'.format(matrix[r, c]))
+                entry = tk.Entry(window, width=5, textvariable=mystr, state=DISABLED)
+                entry.grid(row=r, column=c)
+    else:
+        for widget in window.winfo_children():
+            widget.destroy()
+        conformationLabel = tk.Label(window, text="Matrix created!")
+        conformationLabel.grid(row=0, column=0)
 
 
 def get_data():
+    # function that will put data into a matrix in custom window
     global matrix
+    global frame2
     for r, row in enumerate(all_entries):
         for c, entry in enumerate(row):
             text = entry.get()
             matrix[r, c] = int(text)
+    save(matrix, "custom")
+    # show the matrix
+    show_matrix(matrix, frame2)
 
-    show_matrix(matrix, root)
 
-
-def get_data_random(num_rows, num_cols):
+def get_data_random(num_rows, num_cols, how_many):
+    # function that will put data into a matrix in random window
     global matrix_random
     global lower_number
     global higher_number
-    matrix_random = np.random.randint(int(lower_number.get()), high=int(higher_number.get()), size=(num_rows, num_cols))
-    show_matrix(matrix_random, root)
+    global frameR2
+    global lst_random
+    # clear the list with matrices
+    clear("random")
+    for i in range(how_many):
+        # create the matrix
+        matrix_random = np.random.randint(int(lower_number.get()),
+                                          high=int(higher_number.get()),
+                                          size=(num_rows, num_cols))
+        # save matrix in the list
+        save(matrix_random, "random")
+    # if there is only one matrix then display it
+    if how_many == 1:
+        show_matrix(matrix_random, frameR2)
+    # if there are more then one matrix then tell that they were created
+    else:
+        # first delete the messages or a matrix on screen
+        for widget in frameR2.winfo_children():
+            widget.destroy()
+        # show the message
+        conformationLabel = tk.Label(frameR2, text="Matrices created!")
+        conformationLabel.grid(row=0, column=0)
+
+
+def hung_method(lst, problem, sort):
+    global weights_custom_min
+    global weights_custom_max
+    global weights_random_min
+    global weights_random_max
+    global frameR4
+    global frame4
+    clear(lst)
+
+    if (sort == "custom") and (problem == "min"):
+        clear("weights_custom_min")
+        for widget in frame4.winfo_children():
+            widget.destroy()
+        for matrix in lst:
+            (w, p) = hungarian_method(matrix, "min")
+            weights_custom_min.append(w)
+        lb = tk.Label(frame4, text="Minimum weights of matrices:")
+        lb.grid(row=0, column=0)
+        lb = tk.Label(frame4, text="{}".format(weights_custom_min))
+        lb.grid(row=1, column=0)
+        lb.grid_columnconfigure(0, weight=1)
+    if (sort == "custom") and (problem == "max"):
+        clear("weights_custom_max")
+        for widget in frame4.winfo_children():
+            widget.destroy()
+        for matrix in lst:
+            (w, p) = hungarian_method(matrix, "max")
+            weights_custom_max.append(w)
+        lb = tk.Label(frame4, text="Maximum weights of matrices:")
+        lb.grid(row=0, column=0)
+        lb = tk.Label(frame4, text="{}".format(weights_custom_max))
+        lb.grid(row=1, column=0)
+        lb.grid_columnconfigure(0, weight=1)
+    if (sort == "random") and (problem == "min"):
+        clear("weights_random_min")
+        for widget in frameR4.winfo_children():
+            widget.destroy()
+        for matrix in lst:
+            (w, p) = hungarian_method(matrix, "min")
+            weights_random_min.append(w)
+        lb = tk.Label(frameR4, text="Minimum weights of matrices:")
+        lb.grid(row=0, column=0)
+        lb = tk.Label(frameR4, text="{}".format(weights_random_min))
+        lb.grid(row=1, column=0)
+        lb.grid_columnconfigure(0, weight=1)
+    if (sort == "random") and (problem == "max"):
+        clear("weights_random_max")
+        for widget in frameR4.winfo_children():
+            widget.destroy()
+        for matrix in lst:
+            (w, p) = hungarian_method(matrix, "max")
+            weights_random_max.append(w)
+        lb = tk.Label(frameR4, text="Maximum weights of matrices:")
+        lb.grid(row=0, column=0)
+        lb = tk.Label(frameR4, text="{}".format(weights_random_max))
+        lb.grid(row=1, column=0)
+        lb.grid_columnconfigure(0, weight=1)
 
 
 def openwindow(sort):
+    # function that will open a window of sort = sort
     global num_rows
     global num_cols
     global matrix
     global matrix_random
+    global lst_custom
+    global lst_random
+    global weights_custom_min
+    global weights_custom_max
+    global weights_random_min
+    global weights_random_max
 
+    # number of rows and columns of a matrix
     num_rows = int(rows.get())
     num_cols = int(cols.get())
 
     if sort == "custom":
+        # if there are no dimensions than dont open the window
         if (num_rows == 0) or (num_cols == 0):
             messagebox.showerror("Error", "Number of rows and columns have to be greater than 0")
             return
         
         topC = tk.Toplevel()
         topC.title("Custom Matrix")
-        topC.geometry("250x250")
+        
+        # define frames on the window
+        global frame2
+        global frame4
+        frame1 = tk.Frame(topC)
+        frame1.grid(row=0, column=0)
+        frame2 = tk.Frame(topC)
+        frame2.grid(row=0, column=1, padx=20)
+        frame3 = tk.Frame(topC)
+        frame3.grid(row=1, column=0, pady=20)
+        frame4 = tk.Frame(topC)
+        frame4.grid(row=1, column=1, padx=20,  pady=20)
 
         matrix = np.zeros((num_rows, num_cols))
 
+        # build a matrix out of entries
         global all_entries
         all_entries = []
         for r in range(num_rows):
             entries_row = []
             for c in range(num_cols):
-                e = tk.Entry(topC, width=5)
+                e = tk.Entry(frame1, width=5)
                 e.insert('end', 0)
                 e.grid(row=r, column=c)
                 entries_row.append(e)
             all_entries.append(entries_row)
         
-        b = tk.Button(topC, text='CREATE', command=get_data)
-        b.grid(row=num_rows+1, column=0, columnspan=num_cols)
+        # button that will create the matrix
+        b = tk.Button(frame3, text='CREATE', command=get_data)
+        b.grid(row=0, column=0, columnspan=num_cols)
         b.grid_columnconfigure(0, weight=1)
 
-        exit_button = tk.Button(topC, text="Exit", command=topC.destroy)
-        exit_button.grid(row=num_rows+2, column=0, columnspan=num_cols)
+        # button which will launch hungarian method for minimal cost
+        hungMin_button = tk.Button(frame3, text="Hungarian Min", command=lambda: hung_method(lst_custom, "min", "custom"))
+        hungMin_button.grid(row=1, column=0)
+        hungMin_button.grid_columnconfigure(0, weight=1)
+
+        # button which will launch hungarian method for maximum cost
+        hungMax_button = tk.Button(frame3, text="Hungarian max", command=lambda: hung_method(lst_custom, "max", "custom"))
+        hungMax_button.grid(row=2, column=0)
+        hungMax_button.grid_columnconfigure(0, weight=1)
+
+        # button to clear the list of custom matrices
+        exit_button = tk.Button(frame3, text="Clear", command=lambda: clear("custom"))
+        exit_button.grid(row=3, column=0)
+        exit_button.grid_columnconfigure(0, weight=1)
+
+        # button that will close the window
+        exit_button = tk.Button(frame3, text="Exit", command=topC.destroy)
+        exit_button.grid(row=4, column=0)
         exit_button.grid_columnconfigure(0, weight=1)
 
     if sort == "random":
+        # if there are no dimensions than dont open the window
         if (num_rows == 0) or (num_cols == 0):
             messagebox.showerror("Error", "Number of rows and columns have to be greater than 0")
             return
- 
+
         topR = tk.Toplevel()
         topR.title("Random Matrix")
-        topR.geometry("350x250")
 
-        descriptionR = tk.Label(topR, text=("Specify intiger lower and higher bound for intigers in matrix:"))
+        # define frames on the window
+        global frameR2
+        global frameR4
+        frameR1 = tk.Frame(topR)
+        frameR1.grid(row=0, column=0)
+        frameR2 = tk.Frame(topR)
+        frameR2.grid(row=0, column=1, padx=20)
+        frameR3 = tk.Frame(topR)
+        frameR3.grid(row=1, column=0, pady=20)
+        frameR4 = tk.Frame(topR)
+        frameR4.grid(row=1, column=1, padx=20, pady=20)
+
+        # description label
+        descriptionR = tk.Label(frameR1, text=("Specify intiger lower and higher bound for intigers in matrix:"))
 
         global lower_number
         global higher_number
 
-        lowerLabel = tk.Label(topR, text=("lower bound: "))
-        higherLabel = tk.Label(topR, text=("higher bound: "))
-        lower_number = tk.Entry(topR, width=10)
+        # entries
+        lowerLabel = tk.Label(frameR1, text=("lower bound: "))
+        higherLabel = tk.Label(frameR1, text=("higher bound: "))
+        lower_number = tk.Entry(frameR1, width=10)
         lower_number.insert('end', 0)
-        higher_number = tk.Entry(topR, width=10)
+        higher_number = tk.Entry(frameR1, width=10)
         higher_number.insert('end', 10)
 
+        # put widgets on window
         descriptionR.grid(row=0, column=0, columnspan=2)
         lowerLabel.grid(row=1, column=0)
         lower_number.grid(row=1, column=1)
         higherLabel.grid(row=2, column=0)
         higher_number.grid(row=2, column=1)
 
+        # matrix
         matrix_random = np.zeros((num_rows, num_cols))
-        
-        b = tk.Button(topR, text='CREATE', command=lambda: get_data_random(num_rows, num_cols))
-        b.grid(row=3, column=0, columnspan=2)
+
+        many_label = tk.Label(frameR3, text="How many: ")
+        many_label.grid(row=0, column=0)
+
+        # entry that will specify how many matrices do you want to create
+        how_many = tk.Entry(frameR3, width=10)
+        how_many.insert('end', 1)
+        how_many.grid(row=0, column=1)
+
+        # button that will create a matrix
+        b = tk.Button(frameR3, text='CREATE', command=lambda: get_data_random(num_rows, num_cols, int(how_many.get())))
+        b.grid(row=0, column=2)
         b.grid_columnconfigure(0, weight=1)
 
-        exit_button = tk.Button(topR, text="Exit", command=topR.destroy)
-        exit_button.grid(row=4, column=0, columnspan=2)
+        # button which will launch hungarian method for minimal cost
+        hungMin_button = tk.Button(frameR3, text="Hungarian Min", command=lambda: hung_method(lst_random, "min", "random"))
+        hungMin_button.grid(row=1, column=0, columnspan=3)
+        hungMin_button.grid_columnconfigure(0, weight=1)
+
+        # button which will launch hungarian method for maximum cost
+        hungMax_button = tk.Button(frameR3, text="Hungarian max", command=lambda: hung_method(lst_random, "max", "random"))
+        hungMax_button.grid(row=2, column=0, columnspan=3)
+        hungMax_button.grid_columnconfigure(0, weight=1)
+
+        # button that will close the window
+        exit_button = tk.Button(frameR3, text="Exit", command=topR.destroy)
+        exit_button.grid(row=3, column=0, columnspan=3, pady=10)
 
 
-# CREATING WIDGETS
-# ----------------------------------------------
-
-# ----------------------------------------------
+# CREATING WIDGETS ON ROOT WINDOW 
 rowsLabel = tk.Label(root, text=("rows: "))
 colsLabel = tk.Label(root, text=("cols: "))
 rows = tk.Entry(root, width=10)
@@ -132,13 +337,13 @@ custom_matrix_btn = tk.Button(root, text="Create Custom Matrix", command=lambda:
 random_matrix_btn = tk.Button(root, text="Create Random Matrix", command=lambda: openwindow("random"))
 
 
-# WIDGET ON SCREEN
+# WIDGET ON ROOT WINDOW
 rowsLabel.grid(row=0, column=0)
 rows.grid(row=0, column=1)
 colsLabel.grid(row=0, column=2)
 cols.grid(row=0, column=3)
-custom_matrix_btn.grid(row=1, column=0, columnspan=2)
-random_matrix_btn.grid(row=2, column=0, columnspan=2)
+custom_matrix_btn.grid(row=1, column=0, columnspan=4)
+random_matrix_btn.grid(row=2, column=0, columnspan=4)
 
 
 

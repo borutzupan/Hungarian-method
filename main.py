@@ -234,24 +234,23 @@ def step6(matrix, row_cov, column_cov, step):
     return matrix, step
 
 
-def hungarian_method():
-    problem = 'min'
-    npMatrix = np.random.randint(0, high=10, size=(5, 5))
+def hungarian_method(mat, problem):
+    # npMatrix = np.random.randint(0, high=10, size=(5, 5))
     if(problem == 'min'):
-        cost_matrix = npMatrix
+        cost_matrix = mat
     elif(problem == 'max'):
         # Using the maximum value of the profit_matrix to get the
         # corresponding cost_matrix
-        max_value = np.max(npMatrix)
+        max_value = np.max(mat)
         # Using the cost matrix to find which positions are the answer
-        cost_matrix = max_value - npMatrix
+        cost_matrix = max_value - mat
     else:
         print('The problem can only be minimum or maximum weight')
     matrix = cost_matrix.copy()
     # the weight of the matching
     weight = 0
     # n vrstic in m stolpcev
-    (n, m) = npMatrix.shape
+    (n, m) = mat.shape
     # mark je matrika kjer bomo oznacevali katere nicle so oznacene z zezdico,
     # katere s crtico 1 ce je nicla z zvezdico, 2 ce je nicla s crtico, 0 sicer
     mark = np.array([[0]*m]*n)
@@ -264,15 +263,15 @@ def hungarian_method():
 
     done = False
     while(done is False):
-        print('===============================')
-        print(matrix)
-        print('-------------------------------')
-        print(mark)
-        print('-------------------------------')
-        print('row covered: {}'.format(row_cov))
-        print('column covered: {}'.format(col_cov))
-        print('===============================')
-        print('step {}'.format(step))
+        #print('===============================')
+        #print(matrix)
+        #print('-------------------------------')
+        #print(mark)
+        #print('-------------------------------')
+        #print('row covered: {}'.format(row_cov))
+        #print('column covered: {}'.format(col_cov))
+        #print('===============================')
+        #print('step {}'.format(step))
         if (step == 0):
             (matrix, step) = step0(matrix, step)
         elif (step == 1):
@@ -288,18 +287,19 @@ def hungarian_method():
         elif (step == 6):
             (matrix, step) = step6(matrix, row_cov, col_cov, step)
         elif (step == 7):
-            weight = npMatrix[mark == 1].sum()
+            weight = mat[mark == 1].sum()
             idx = np.where(mark == 1)
             pairing = list(zip(idx[0], idx[1]))
-            if(problem == 'min'):
-                print(npMatrix)
-                print('pairing: {}'.format(pairing))
-                print('minimum weight of matrix: {}'.format(weight))
-            elif(problem == 'max'):
-                print(npMatrix)
-                print('pairing: {}'.format(pairing))
-                print('maximum weight of matrix: {}'.format(weight))
+            #if(problem == 'min'):
+                #print(mat)
+                #print('pairing: {}'.format(pairing))
+                #print('minimum weight of matrix: {}'.format(weight))
+            #elif(problem == 'max'):
+                #print(mat)
+                #print('pairing: {}'.format(pairing))
+                #print('maximum weight of matrix: {}'.format(weight))
             done = True
+    return weight, pairing
 
 
 if __name__ == '__main__':
