@@ -234,7 +234,7 @@ def step6(matrix, row_cov, column_cov, step):
     return matrix, step
 
 
-def main():
+def hungarian_method():
     problem = 'min'
     npMatrix = np.random.randint(0, high=10, size=(5, 5))
     if(problem == 'min'):
@@ -303,4 +303,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    hungarian_method()
