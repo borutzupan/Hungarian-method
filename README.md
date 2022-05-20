@@ -1,9 +1,8 @@
 # Hungarian-method
 
 ## Podatki
-- Poln dvodelen graf *G*, kjer je <img src="https://render.githubusercontent.com/render/math?math=$V(G) = X \cup Y$">dvodelna razdelitev, <img src="https://render.githubusercontent.com/render/math?math=$X = \{x_1,\ldots,x_n\}$"> in <img src="https://render.githubusercontent.com/render/math?math=$Y = \{y_1,\ldots,y_m\}$">.
-- 
-- Matrika cen povezav $C \in \mathbb{R}^{n\times m}$.
+- Poln dvodelen graf *G*, kjer je <img src="https://render.githubusercontent.com/render/math?math=$V(G) = X \cup Y$"> dvodelna razdelitev, <img src="https://render.githubusercontent.com/render/math?math=$X = \{x_1,\ldots,x_n\}$"> in <img src="https://render.githubusercontent.com/render/math?math=$Y = \{y_1,\ldots,y_m\}$">.
+- Matrika cen povezav <img src="https://render.githubusercontent.com/render/math?math=$C \in \mathbb{R}^{n\times m}$">.
 
 ## Rezultat
 Najcenejše popolno prirejanje v $G$, pri čemer je cena prirejanja $M \subseteq E(G)$ enaka
