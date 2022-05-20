@@ -1,306 +1,457 @@
-from asyncio.windows_events import NULL
+import tkinter as tk
+from tkinter import DISABLED, messagebox
 import numpy as np
+from HM import hungarian_method
+from statistics import analysis
+import warnings
+
+# we ignore some warnings about future disagreement between
+# python and numpy
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
-def step0(matrix, step):
-    n = len(matrix[:, 0])
-    m = len(matrix[0, :])
-    if n > m:
-        matrix = np.transpose(matrix)
-    step = 1
-    return matrix, step
+root = tk.Tk()
+root.title("HUNGARIAN METHOD")
+
+global lst_custom
+global lst_random
+global weights_custom_min
+global weights_custom_max
+global weights_random_min
+global weights_random_max
+
+lst_custom = None
+lst_random = []
+weights_custom_min = []
+weights_custom_max = []
+weights_random_min = []
+weights_random_max = []
 
 
-def step1(matrix, step):
-    '''
-    For each row of the matrix, find the smallest element and subtract it
-    from every element in its row.  Go to Step 2.
-    '''
-    n = len(matrix[:, 0])
-    for i in range(n):
-        row = matrix[i]
-        min_el = min(row)
-        # matrix[i] = list(map(lambda x: x-min_el, row))
-        matrix[i] = matrix[i] - min_el
-    step = 2
-    return matrix, step
+# FUNCTIONS FOR WIDGETS
+def save(matrix, sort):
+    # function that will save a matrix into a list
+    global lst_custom
+    global lst_random
+    if sort == "custom":
+        lst_custom = matrix
+    elif sort == "random":
+        lst_random.append(matrix)
 
 
-def step2(matrix, mark_matrix, step):
-    '''
-    Find a zero (Z) in the resulting matrix.  If there is no starred zero
-    in its row or column, star Z. Repeat for each element in the matrix.
-    Go to Step 3.
-    '''
-    n = len(matrix[:, 0])
-    m = len(matrix[0, :])
-    # find a zero
-    for i in range(n):
-        # if there is no starred zero in its column or row, star it
-        if 1 not in mark_matrix[i]:
-            for j in range(m):
-                if (matrix[i, j] == 0) and (1 not in mark_matrix[:, j]):
-                    mark_matrix[i, j] = 1
-                    break
-    # go to step 3
-    step = 3
-    return mark_matrix, step
+def clear(sort):
+    # function that will clear the list with matrices
+    global lst_custom
+    global lst_random
+    global weights_custom_min
+    global weights_custom_max
+    global weights_random_min
+    global weights_random_max
+    global pairings
+    if sort == "custom":
+        lst_custom = None
+    elif sort == "random":
+        lst_random = []
+    elif sort == "weights_custom_min":
+        weights_custom_min = []
+    elif sort == "weights_custom_max":
+        weights_custom_max = []
+    elif sort == "weights_random_min":
+        weights_random_min = []
+    elif sort == "weights_random_max":
+        weights_random_max = []
+    elif sort == "pairings":
+        pairings = []
 
 
-def step3(row_cov, column_cov, mark_matrix, step):
-    '''
-    Cover each column containing a starred zero.  If K columns are covered,
-    the starred zeros describe a complete set of unique assignments.
-    In this case, go to Step 7, otherwise, go to Step 4.
-    '''
-    n = len(row_cov)
-    m = len(column_cov)
-    k = min(n, m)
-    # array of indeces of starred zeroes
-    star_zero = np.where(mark_matrix == 1)
-    # column indeces of starred zeroes
-    star_zero_column = star_zero[1]
-    # cover every column that contains a starred zero
-    for j in star_zero_column:
-        column_cov[j] = 1
-    # if there are k columns covered go to final step, step 7
-    if sum(column_cov) == k:
-        step = 7
+def show_matrix(matrix, window):
+    # function that will show matrix on a window
+    (n_rows, n_cols) = matrix.shape
+    if (n_rows <= 10) and (n_cols <= 10):
+        for widget in window.winfo_children():
+            widget.destroy()
+        for r in range(n_rows):
+            for c in range(n_cols):
+                mystr = tk.StringVar()
+                mystr.set('{}'.format(matrix[r, c]))
+                entry = tk.Entry(window, width=5, textvariable=mystr, state=DISABLED)
+                entry.grid(row=r, column=c)
     else:
-        # if there are < k columns covered go to step 4
-        step = 4
-    return row_cov, column_cov, step
+        for widget in window.winfo_children():
+            widget.destroy()
+        conformationLabel = tk.Label(window, text="Matrix created!", font=('Helvetica', 14, 'bold'))
+        conformationLabel.grid(row=0, column=0)
 
 
-def find_noncov_zero(matrix, row_cov, column_cov):
-    '''
-    for step4 we need to find a noncovered zero, which we do with this function
-    '''
-    n = len(row_cov)
-    m = len(column_cov)
-    # (row,col) are the coordinates of the noncovered zero
-    # if there are no more noncovered zeroes than they are (-1,-1)
-    row = -1
-    col = -1
-    # look thorugh matrix
-    for r in range(n):
-        for c in range(m):
-            # if we find the zero we set the row and col to its coordinates
-            # and break the loop for columns
-            if (matrix[r, c] == 0 and row_cov[r] == 0 and column_cov[c] == 0):
-                row = r
-                col = c
-                break
-        # if we founds the zero we break the loop for rows
-        if (row != -1):
-            break
-    return row, col
+def get_data():
+    # function that will put data into a matrix in custom window
+    global matrix
+    global frame2
+    for r, row in enumerate(all_entries):
+        for c, entry in enumerate(row):
+            text = entry.get()
+            matrix[r, c] = int(text)
+    save(matrix, "custom")
+    # show the matrix
+    show_matrix(matrix, frame2)
 
 
-def step4(matrix, mark_matrix, row_cov, column_cov, step):
-    '''
-    Find a noncovered zero and prime it.  If there is no starred zero
-    in the row containing this primed zero, go to Step 5.
-    Otherwise, cover this row and uncover the column containing the starred
-    zero. Continue in this manner until there are no uncovered zeros left.
-    Go to Step 6.
-    '''
-    row = -1
-    col = -1
-    done = False
+def get_data_random(num_rows, num_cols, how_many):
+    # function that will put data into a matrix in random window
+    global matrix_random
+    global lower_number
+    global higher_number
+    global frameR2
+    global lst_random
+    # clear the list with matrices
+    clear("random")
+    for i in range(how_many):
+        # create the matrix
+        matrix_random = np.random.randint(int(lower_number.get()),
+                                          high=int(higher_number.get()),
+                                          size=(num_rows, num_cols))
+        # save matrix in the list
+        save(matrix_random, "random")
+    # if there is only one matrix then display it
+    if how_many == 1:
+        show_matrix(matrix_random, frameR2)
+    # if there are more then one matrix then tell that they were created
+    else:
+        # first delete the messages or a matrix on screen
+        for widget in frameR2.winfo_children():
+            widget.destroy()
+        # show the message
+        conformationLabel = tk.Label(frameR2, text="Matrices created!", font=('Helvetica', 14, 'bold'))
+        conformationLabel.grid(row=0, column=0)
 
-    # until there are noncovered zeroes we repeat the process
-    while(done is False):
-        # find a noncovered zero
-        (row, col) = find_noncov_zero(matrix, row_cov, column_cov)
-        # if there were none we are done and go to step 6
-        if (row == -1):
-            done = True
-            # go to step 6
-            step = 6
-        else:
-            # else prime the zero
-            mark_matrix[row, col] = 2
-            # if there is a starred zero in the row containing this
-            # primed zero cover this row and uncover the column
-            # containing the starred zero
-            if 1 in mark_matrix[row, :]:
-                # the position of the starred zero
-                star = np.where(mark_matrix[row, :] == 1)
-                # cover the row
-                row_cov[row] = 1
-                # uncover the column containing the starred zero
-                column_cov[star[0][0]] = 0
+
+def hung_method(lst, problem, sort):
+    global weights_custom_min
+    global weights_custom_max
+    global weights_random_min
+    global weights_random_max
+    global frameR4
+    global frame4
+    global frameR5
+    global pairings
+    clear(lst)
+    pairings = []
+
+    if (sort == "custom") and (problem == "min"):
+        clear("weights_custom_min")
+        clear("pairings")
+        for widget in frame4.winfo_children():
+            widget.destroy()
+        (w, p) = hungarian_method(lst, "min")
+        weights_custom_min.append(w)
+        pairings = p
+
+        lb = tk.Label(frame4, text="Minimum weights of matrices:", font=('Helvetica', 12, 'bold'))
+        lb.grid(row=0, column=0)
+        lb = tk.Label(frame4, text="{}".format(weights_custom_min[0]))
+        lb.grid(row=1, column=0)
+        lb.grid_columnconfigure(0, weight=1)
+
+        lb = tk.Label(frame4, text="Pairing:", font=('Helvetica', 12, 'bold'))
+        lb.grid(row=2, column=0)
+        lb = tk.Label(frame4, text="{}".format(pairings))
+        lb.grid(row=3, column=0)
+        lb.grid_columnconfigure(0, weight=1)
+
+    if (sort == "custom") and (problem == "max"):
+        clear("weights_custom_max")
+        clear("pairings")
+        for widget in frame4.winfo_children():
+            widget.destroy()
+        (w, p) = hungarian_method(lst, "max")
+        weights_custom_max.append(w)
+        pairings = p
+
+        lb = tk.Label(frame4, text="Maximum weights of matrices:", font=('Helvetica', 12, 'bold'))
+        lb.grid(row=0, column=0)
+        lb = tk.Label(frame4, text="{}".format(weights_custom_max[0]))
+        lb.grid(row=1, column=0)
+        lb.grid_columnconfigure(0, weight=1)
+        
+        lb = tk.Label(frame4, text="Pairing:" ,font=('Helvetica', 12, 'bold'))
+        lb.grid(row=2, column=0)
+        lb = tk.Label(frame4, text="{}".format(pairings))
+        lb.grid(row=3, column=0)
+        lb.grid_columnconfigure(0, weight=1)
+
+    if (sort == "random") and (problem == "min"):
+        clear("weights_random_min")
+        clear("pairings")
+        for widget in frameR4.winfo_children():
+            widget.destroy()
+        for widget in frameR5.winfo_children():
+            widget.destroy()
+        for matrix in lst:
+            (w, p) = hungarian_method(matrix, "min")
+            weights_random_min.append(w)
+            # pairings.append(p)
+        if len(lst) <= 20:
+            lb = tk.Label(frameR4, text="Minimum weights of matrices:", font=('Helvetica', 10, 'bold'))
+            lb.grid(row=0, column=0)
+            if len(lst) == 1:
+                lb = tk.Label(frameR4, text="{}".format(weights_random_min[0]))
+                lb.grid(row=1, column=0)
+                lb.grid_columnconfigure(0, weight=1)
             else:
-                # if there are no starred zeroes in the row of
-                # this primed zero we are done and go to step 5
-                done = True
-                step = 5
-    return row, col, mark_matrix, row_cov, column_cov, step
+                lb = tk.Label(frameR4, text="{}".format(weights_random_min))
+                lb.grid(row=1, column=0)
+                lb.grid_columnconfigure(0, weight=1)
+
+        (wd, td) = analysis(lst, problem)
+
+        lb = tk.Label(frameR5, text="Weights:", font=('Helvetica', 12, 'bold'))
+        lb.grid(row=0, column=0)
+        i = 1
+        for key, value in wd.items():
+            lb = tk.Label(frameR5, text="{}: {}".format(key, value))
+            lb.grid(row=i, column=0)
+            lb.grid_columnconfigure(0, weight=1)
+            i += 1
+
+        i += 1
+        lb = tk.Label(frameR5, text="Time:", font=('Helvetica', 12, 'bold'))
+        lb.grid(row=i, column=0)
+        i += 1
+        for key, value in td.items():
+            lb = tk.Label(frameR5, text="{}: {}".format(key, value))
+            lb.grid(row=i, column=0)
+            lb.grid_columnconfigure(0, weight=1)
+            i += 1
+
+    if (sort == "random") and (problem == "max"):
+        # clear every list and widget of the screen
+        # to make space for new ones
+        clear("weights_random_max")
+        clear("pairings")
+        for widget in frameR4.winfo_children():
+            widget.destroy()
+        for widget in frameR5.winfo_children():
+            widget.destroy()
+        # hungarian method on matrices
+        for matrix in lst:
+            (w, p) = hungarian_method(matrix, "max")
+            weights_random_max.append(w)
+            # pairings.append(p)
+        if len(lst) <= 20:
+            lb = tk.Label(frameR4, text="Maximum weights of matrices:", font=('Helvetica', 10, 'bold'))
+            lb.grid(row=0, column=0)
+            if len(lst) == 1:
+                lb = tk.Label(frameR4, text="{}".format(weights_random_max[0]))
+                lb.grid(row=1, column=0)
+                lb.grid_columnconfigure(0, weight=1)
+            else:
+                lb = tk.Label(frameR4, text="{}".format(weights_random_max))
+                lb.grid(row=1, column=0)
+                lb.grid_columnconfigure(0, weight=1)
+        
+        # do an analysis on list of matrices
+        (wd, td) = analysis(lst, problem)
+        # put the analysis results on screen
+        lb = tk.Label(frameR5, text="Weights:", font=('Helvetica', 12, 'bold'))
+        lb.grid(row=0, column=0)
+        i = 1
+        for key, value in wd.items():
+            lb = tk.Label(frameR5, text="{}: {}".format(key, value))
+            lb.grid(row=i, column=0)
+            lb.grid_columnconfigure(0, weight=1)
+            i += 1
+
+        i += 1
+        lb = tk.Label(frameR5, text="Time:", font=('Helvetica', 12, 'bold'))
+        lb.grid(row=i, column=0)
+        i += 1
+        for key, value in td.items():
+            lb = tk.Label(frameR5, text="{}: {}".format(key, value))
+            lb.grid(row=i, column=0)
+            lb.grid_columnconfigure(0, weight=1)
+            i += 1
 
 
-def fix_mark(path, mark_matrix):
-    '''
-    Unstar each starred zero of the series, star each primed zero of the
-    series.
-    '''
-    # length of series
-    s = len(path[:, 0])
+def openwindow(sort):
+    # function that will open a window of sort = sort
+    global num_rows
+    global num_cols
+    global matrix
+    global matrix_random
+    global lst_custom
+    global lst_random
+    global weights_custom_min
+    global weights_custom_max
+    global weights_random_min
+    global weights_random_max
 
-    # Unstar each starred zero of the series
-    for j in range(1, s, 2):
-        row_idx = path[j, 0]
-        col_idx = path[j, 1]
-        if ((row_idx != -1) and (col_idx != -1)):
-            mark_matrix[row_idx, col_idx] = 0
+    # number of rows and columns of a matrix
+    num_rows = int(rows.get())
+    num_cols = int(cols.get())
 
-    # star each primed zero of the series
-    for i in range(0, s, 2):
-        row_idx = path[i, 0]
-        col_idx = path[i, 1]
-        if ((row_idx != -1) and (col_idx != -1)):
-            mark_matrix[row_idx, col_idx] = 1
+    if sort == "custom":
+        # if there are no dimensions than dont open the window
+        if (num_rows == 0) or (num_cols == 0):
+            messagebox.showerror("Error", "Number of rows and columns have to be greater than 0")
+            return
+        
+        topC = tk.Toplevel()
+        topC.title("Custom Matrix")
+        
+        # define frames on the window
+        global frame2
+        global frame4
+        frame1 = tk.Frame(topC)
+        frame1.grid(row=0, column=0)
+        frame2 = tk.Frame(topC)
+        frame2.grid(row=0, column=1, padx=20)
+        frame3 = tk.Frame(topC)
+        frame3.grid(row=1, column=0, pady=20)
+        frame4 = tk.Frame(topC)
+        frame4.grid(row=1, column=1, padx=20,  pady=20)
 
-    return mark_matrix
+        matrix = np.zeros((num_rows, num_cols))
 
+        # build a matrix out of entries
+        global all_entries
+        all_entries = []
+        for r in range(num_rows):
+            entries_row = []
+            for c in range(num_cols):
+                e = tk.Entry(frame1, width=5)
+                e.insert('end', 0)
+                e.grid(row=r, column=c)
+                entries_row.append(e)
+            all_entries.append(entries_row)
+        
+        # button that will create the matrix
+        b = tk.Button(frame3, text='CREATE', command=get_data)
+        b.grid(row=0, column=0, columnspan=num_cols)
+        b.grid_columnconfigure(0, weight=1)
 
-def step5(row, col, matrix, mark_matrix, row_cov, column_cov, step):
-    '''
-    Construct a series of alternating primed and starred zeros as follows.
-    Let Z0 represent the uncovered primed zero found in Step 4.
-    Let Z1 denote the starred zero in the column of Z0 (if any).
-    Let Z2 denote the primed zero in the row of Z1.  Continue until the series
-    terminates at a primed zero that has no starred zero in its column.
-    Unstar each starred zero of the series, star each primed zero of the
-    series, erase all primes and uncover every line in the matrix.
-    Return to Step 3.
-    '''
-    n = len(row_cov)
-    m = len(column_cov)
-    done = False
-    path_count = 1
-    path = np.array([[-1, -1]]*(2*m))
-    path[path_count - 1, 0] = row
-    path[path_count - 1, 1] = col
+        # button which will launch hungarian method for minimal cost
+        hungMin_button = tk.Button(frame3, text="Hungarian Min",
+                                   command=lambda: hung_method(lst_custom, "min", "custom"))
+        hungMin_button.grid(row=1, column=0)
+        hungMin_button.grid_columnconfigure(0, weight=1)
 
-    while (done is False):
-        if 1 in mark_matrix[:, path[path_count - 1, 1]]:
-            star_col = np.where(mark_matrix[:, path[path_count - 1, 1]] == 1)
-            star_col = star_col[0][0]
-            path_count += 1
-            path[path_count - 1, 0] = star_col
-            path[path_count - 1, 1] = path[path_count - 2, 1]
-        else:
-            done = True
-        if (done is False):
-            prime_row = np.where(mark_matrix[path[path_count - 1, 0], :] == 2)
-            prime_row = prime_row[0][0]
-            path_count += 1
-            path[path_count - 1, 0] = path[path_count - 2, 0]
-            path[path_count - 1, 1] = prime_row
+        # button which will launch hungarian method for maximum cost
+        hungMax_button = tk.Button(frame3, text="Hungarian max",
+                                   command=lambda: hung_method(lst_custom, "max", "custom"))
+        hungMax_button.grid(row=2, column=0)
+        hungMax_button.grid_columnconfigure(0, weight=1)
 
-    # primes -> star, star -> unmarked
-    mark_matrix = fix_mark(path, mark_matrix)
-    # uncover every line in the matrix
-    row_cov[row_cov == 1] = 0
-    # erase all primes
-    mark_matrix[mark_matrix == 2] = 0
-    # return to step 3
-    step = 3
-    return mark_matrix, row_cov, column_cov, step
+        # button to clear the list of custom matrices
+        # exit_button = tk.Button(frame3, text="Clear", command=lambda: clear("custom"))
+        # exit_button.grid(row=3, column=0)
+        # exit_button.grid_columnconfigure(0, weight=1)
 
+        # button that will close the window
+        exit_button = tk.Button(frame3, text="Exit", command=topC.destroy)
+        exit_button.grid(row=4, column=0, pady=10)
+        exit_button.grid_columnconfigure(0, weight=1)
 
-def step6(matrix, row_cov, column_cov, step):
-    '''
-    Find the smallest uncovered value. Add the this value to every element
-    of each covered row and subtract it from every element of each uncovered
-    column. Return to Step 4 without altering any stars, primes,
-    or covered lines.
-    '''
-    uncovered_row = np.where(row_cov == 0)
-    uncovered_row = uncovered_row[0]
-    uncovered_col = np.where(column_cov == 0)
-    uncovered_col = uncovered_col[0]
-    covered_row = np.where(row_cov == 1)
-    covered_row = covered_row[0]
-    # smallest uncovered value
-    min_el = matrix[np.ix_(uncovered_row, uncovered_col)].min()
-    for i in covered_row:
-        matrix[i, :] = matrix[i, :] + min_el
-    for j in uncovered_col:
-        matrix[:, j] = matrix[:, j] - min_el
-    # return to step 4
-    step = 4
-    return matrix, step
+    if sort == "random":
+        # if there are no dimensions than dont open the window
+        if (num_rows == 0) or (num_cols == 0):
+            messagebox.showerror("Error", "Number of rows and columns have to be greater than 0")
+            return
 
+        topR = tk.Toplevel()
+        topR.title("Random Matrix")
 
-def hungarian_method(mat, problem):
-    # npMatrix = np.random.randint(0, high=10, size=(5, 5))
-    if(problem == 'min'):
-        cost_matrix = mat
-    elif(problem == 'max'):
-        # Using the maximum value of the profit_matrix to get the
-        # corresponding cost_matrix
-        max_value = np.max(mat)
-        # Using the cost matrix to find which positions are the answer
-        cost_matrix = max_value - mat
-    else:
-        print('The problem can only be minimum or maximum weight')
-    matrix = cost_matrix.copy()
-    # the weight of the matching
-    weight = 0
-    # n vrstic in m stolpcev
-    (n, m) = mat.shape
-    # mark je matrika kjer bomo oznacevali katere nicle so oznacene z zezdico,
-    # katere s crtico 1 ce je nicla z zvezdico, 2 ce je nicla s crtico, 0 sicer
-    mark = np.array([[0]*m]*n)
-    # seznama, ki povesta katere vrstice oz. stolpci so pokriti
-    # 0, ce vrstica oz. stolpec ni pokrit, 1 sicer
-    row_cov = np.array([0]*n)
-    col_cov = np.array([0]*m)
-    # v katerem koraku smo
-    step = 0
+        # define frames on the window
+        global frameR2
+        global frameR4
+        global frameR5
+        frameR1 = tk.Frame(topR)
+        frameR1.grid(row=0, column=0)
+        frameR2 = tk.Frame(topR)
+        frameR2.grid(row=0, column=1, padx=20)
+        frameR3 = tk.Frame(topR)
+        frameR3.grid(row=1, column=0, pady=20)
+        frameR4 = tk.Frame(topR)
+        frameR4.grid(row=1, column=1, padx=20, pady=20)
+        frameR5 = tk.Frame(topR)
+        frameR5.grid(row=0, column=2, padx=20, rowspan=2)
 
-    done = False
-    while(done is False):
-        #print('===============================')
-        #print(matrix)
-        #print('-------------------------------')
-        #print(mark)
-        #print('-------------------------------')
-        #print('row covered: {}'.format(row_cov))
-        #print('column covered: {}'.format(col_cov))
-        #print('===============================')
-        #print('step {}'.format(step))
-        if (step == 0):
-            (matrix, step) = step0(matrix, step)
-        elif (step == 1):
-            (matrix, step) = step1(matrix, step)
-        elif (step == 2):
-            (mark, step) = step2(matrix, mark, step)
-        elif (step == 3):
-            (row_cov, col_cov, step) = step3(row_cov, col_cov, mark, step)
-        elif (step == 4):
-            (row, col, mark, row_cov, col_cov, step) = step4(matrix, mark, row_cov, col_cov, step)
-        elif (step == 5):
-            (mark, row_cov, col_cov, step) = step5(row, col, matrix, mark, row_cov, col_cov, step)
-        elif (step == 6):
-            (matrix, step) = step6(matrix, row_cov, col_cov, step)
-        elif (step == 7):
-            weight = mat[mark == 1].sum()
-            idx = np.where(mark == 1)
-            pairing = list(zip(idx[0], idx[1]))
-            #if(problem == 'min'):
-                #print(mat)
-                #print('pairing: {}'.format(pairing))
-                #print('minimum weight of matrix: {}'.format(weight))
-            #elif(problem == 'max'):
-                #print(mat)
-                #print('pairing: {}'.format(pairing))
-                #print('maximum weight of matrix: {}'.format(weight))
-            done = True
-    return weight, pairing
+        # description label
+        descriptionR = tk.Label(frameR1, text=("Specify intiger lower and higher bound for intigers in matrix:"))
+
+        global lower_number
+        global higher_number
+
+        # entries
+        lowerLabel = tk.Label(frameR1, text=("lower bound: "))
+        higherLabel = tk.Label(frameR1, text=("higher bound: "))
+        lower_number = tk.Entry(frameR1, width=10)
+        lower_number.insert('end', 0)
+        higher_number = tk.Entry(frameR1, width=10)
+        higher_number.insert('end', 10)
+
+        # put widgets on window
+        descriptionR.grid(row=0, column=0, columnspan=2)
+        lowerLabel.grid(row=1, column=0)
+        lower_number.grid(row=1, column=1)
+        higherLabel.grid(row=2, column=0)
+        higher_number.grid(row=2, column=1)
+
+        # matrix
+        matrix_random = np.zeros((num_rows, num_cols))
+
+        many_label = tk.Label(frameR3, text="How many: ")
+        many_label.grid(row=0, column=0)
+
+        # entry that will specify how many matrices do you want to create
+        how_many = tk.Entry(frameR3, width=10)
+        how_many.insert('end', 1)
+        how_many.grid(row=0, column=1, pady=10)
+
+        # button that will create a matrix
+        b = tk.Button(frameR3, text='CREATE',
+                      command=lambda: get_data_random(num_rows, num_cols, int(how_many.get())))
+        b.grid(row=0, column=2, padx=20, pady=10)
+        b.grid_columnconfigure(0, weight=1)
+
+        # button which will launch hungarian method for minimal cost
+        hungMin_button = tk.Button(frameR3, text="Hungarian Min",
+                                   command=lambda: hung_method(lst_random, "min", "random"))
+        hungMin_button.grid(row=1, column=0, columnspan=3, pady=5)
+        hungMin_button.grid_columnconfigure(0, weight=1)
+
+        # button which will launch hungarian method for maximum cost
+        hungMax_button = tk.Button(frameR3, text="Hungarian max",
+                                   command=lambda: hung_method(lst_random, "max", "random"))
+        hungMax_button.grid(row=2, column=0, columnspan=3)
+        hungMax_button.grid_columnconfigure(0, weight=1)
+
+        # button that will close the window
+        exit_button = tk.Button(frameR3, text="Exit", command=topR.destroy)
+        exit_button.grid(row=3, column=0, columnspan=3, pady=10)
 
 
-if __name__ == '__main__':
-    hungarian_method()
+# CREATING WIDGETS ON ROOT WINDOW 
+rowsLabel = tk.Label(root, text=("rows: "))
+colsLabel = tk.Label(root, text=("cols: "))
+rows = tk.Entry(root, width=10)
+rows.insert('end', 3)
+cols = tk.Entry(root, width=10)
+cols.insert('end', 3)
+
+
+custom_matrix_btn = tk.Button(root, text="Create Custom Matrix",
+                              command=lambda: openwindow("custom"))
+random_matrix_btn = tk.Button(root, text="Create Random Matrix",
+                              command=lambda: openwindow("random"))
+
+
+# WIDGET ON ROOT WINDOW
+rowsLabel.grid(row=0, column=0)
+rows.grid(row=0, column=1)
+colsLabel.grid(row=0, column=2)
+cols.grid(row=0, column=3)
+custom_matrix_btn.grid(row=1, column=0, columnspan=4, pady=10)
+random_matrix_btn.grid(row=2, column=0, columnspan=4)
+
+# main loop
+root.mainloop()
