@@ -21,9 +21,9 @@ $$ c(M) = \sum_{x_iy_j \in M}c_{ij}. $$
    ničle s črtico pojdi na točko 6. Drugače, pokrij vrstico z ničlno s črtico in razkrij
    stolpec, ki vsebuje ničlo z zvezdico. Nadaljuj ta postopek, dokler ni več nobene nepokrite
    ničle. Shrani najmanjšo nepokrito vrednost v matriki in pojdi na točko 7.
-6. Skonstruiraj zaporedje ničel s črtico in ničel z zvezdico na naslednji način. Naj bo *N<sup>0</sup>* ničla
-   ničla s črtico iz točke 5. Z *N<sup>1</sup>* označimo ničlo z zvezdico, ki je v istem stolpcu kot *N<sup>0</sup>* (če obstaja).
-   Z *N<sup>2</sup>* označi ničlo s črtico v isti vrstici kot *N<sup>1</sup>*. Nadaljuj dokler se zaporedje ne ustavi
+6. Skonstruiraj zaporedje ničel s črtico in ničel z zvezdico na naslednji način. Naj bo *N<sub>0</sub>* ničla
+   ničla s črtico iz točke 5. Z *N<sub>1</sub>* označimo ničlo z zvezdico, ki je v istem stolpcu kot *N<sub>0</sub>* (če obstaja).
+   Z *N<sub>2</sub>* označi ničlo s črtico v isti vrstici kot *N<sub>1</sub>*. Nadaljuj dokler se zaporedje ne ustavi
    na ničli s črtico, ki nima nobene ničle z zvedico v njenem stolpcu. V tem zaporedju vse ničle s
    črtico spremeni v ničle z zvedico in vse ničle z zvezdico odznači. Vsa pokritja odpokrij in pojdi
    na točko 4.
