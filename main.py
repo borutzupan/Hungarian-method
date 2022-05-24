@@ -134,6 +134,7 @@ def hung_method(lst, problem, sort):
     global frame4
     global frameR5
     global pairings
+
     clear(lst)
     pairings = []
 
@@ -190,6 +191,7 @@ def hung_method(lst, problem, sort):
             (w, p) = hungarian_method(matrix, "min")
             weights_random_min.append(w)
             # pairings.append(p)
+
         if len(lst) <= 20:
             lb = tk.Label(frameR4, text="Minimum weights of matrices:", font=('Helvetica', 10, 'bold'))
             lb.grid(row=0, column=0)
@@ -202,7 +204,7 @@ def hung_method(lst, problem, sort):
                 lb.grid(row=1, column=0)
                 lb.grid_columnconfigure(0, weight=1)
 
-        (wd, td) = analysis(lst, problem)
+        (wd, td, _, _) = analysis(lst, problem)
 
         lb = tk.Label(frameR5, text="Weights:", font=('Helvetica', 12, 'bold'))
         lb.grid(row=0, column=0)
@@ -237,6 +239,7 @@ def hung_method(lst, problem, sort):
             (w, p) = hungarian_method(matrix, "max")
             weights_random_max.append(w)
             # pairings.append(p)
+        
         if len(lst) <= 20:
             lb = tk.Label(frameR4, text="Maximum weights of matrices:", font=('Helvetica', 10, 'bold'))
             lb.grid(row=0, column=0)
@@ -250,7 +253,8 @@ def hung_method(lst, problem, sort):
                 lb.grid_columnconfigure(0, weight=1)
         
         # do an analysis on list of matrices
-        (wd, td) = analysis(lst, problem)
+        (wd, td, _, _) = analysis(lst, problem)
+
         # put the analysis results on screen
         lb = tk.Label(frameR5, text="Weights:", font=('Helvetica', 12, 'bold'))
         lb.grid(row=0, column=0)
@@ -341,11 +345,6 @@ def openwindow(sort):
         hungMax_button.grid(row=2, column=0)
         hungMax_button.grid_columnconfigure(0, weight=1)
 
-        # button to clear the list of custom matrices
-        # exit_button = tk.Button(frame3, text="Clear", command=lambda: clear("custom"))
-        # exit_button.grid(row=3, column=0)
-        # exit_button.grid_columnconfigure(0, weight=1)
-
         # button that will close the window
         exit_button = tk.Button(frame3, text="Exit", command=topC.destroy)
         exit_button.grid(row=4, column=0, pady=10)
@@ -385,7 +384,7 @@ def openwindow(sort):
         lowerLabel = tk.Label(frameR1, text=("lower bound: "))
         higherLabel = tk.Label(frameR1, text=("higher bound: "))
         lower_number = tk.Entry(frameR1, width=10)
-        lower_number.insert('end', 0)
+        lower_number.insert('end', 1)
         higher_number = tk.Entry(frameR1, width=10)
         higher_number.insert('end', 10)
 
@@ -427,7 +426,7 @@ def openwindow(sort):
 
         # button that will close the window
         exit_button = tk.Button(frameR3, text="Exit", command=topR.destroy)
-        exit_button.grid(row=3, column=0, columnspan=3, pady=10)
+        exit_button.grid(row=4, column=0, columnspan=3, pady=10)
 
 
 # CREATING WIDGETS ON ROOT WINDOW 

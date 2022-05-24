@@ -20,11 +20,11 @@ def analysis(matrix_lst, sort):
         weights.append(w)
         pairings.append(p)
 
-    time_dict['average time'] = round(sum(time)/N,6)
+    time_dict['average time'] = round(sum(time)/N, 6)
     time_dict['max time'] = max(time)
     time_dict['min time'] = min(time)
 
-    weights_dict['average weight'] = round(sum(weights)/N,6)
+    weights_dict['average weight'] = round(sum(weights)/N, 6)
     weights_dict['max weight'] = max(weights)
     weights_dict['min weight'] = min(weights)
 
@@ -35,7 +35,7 @@ def analysis(matrix_lst, sort):
         # plt.grid()
         # plt.show()
 
-    return weights_dict, time_dict
+    return weights_dict, time_dict, weights, time
 
 # if __name__ == '__statistics__':
     # analysis()
