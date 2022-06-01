@@ -16,7 +16,8 @@ def step0(matrix, mark_matrix, row_cov, column_cov, step):
 def step1(matrix, step):
     '''
     For each row of the matrix, find the smallest element and subtract it
-    from every element in its row.  Go to Step 2.
+    from every element in its row.  Do the same for every column.
+    Go to Step 2.
     '''
     n = len(matrix[:, 0])
     for i in range(n):
@@ -24,6 +25,14 @@ def step1(matrix, step):
         min_el = min(row)
         # matrix[i] = list(map(lambda x: x-min_el, row))
         matrix[i] = matrix[i] - min_el
+
+    m = len(matrix[0, :])
+    for j in range(m):
+        column = matrix[:, j]
+        min_el = min(column)
+        # matrix[i] = list(map(lambda x: x-min_el, row))
+        matrix[:,j] = matrix[:, j] - min_el
+    
     step = 2
     return matrix, step
 
